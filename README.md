@@ -10,6 +10,6 @@
 - Falta de acompanhamento longitudinal e baixa autonomia comprometem prevenção contínua.
 - Violência obstétrica e prioridade nos outros afastam mulheres.
 
-- ``Pensando nesses problemas vividos pelas mulheres surge o Bertha Lutz AI, um serviço que promove educação + orientação + triagem + prevenção + segurança da informação + acompanhamento contínuo.``
+- ``Pensando nesses problemas vividos pelas mulheres surge o Bertha Lutz AI. Agente conversacional de saúde da mulher com RAG oficial, memória persistente, guardrails médicos, avaliação automática e observabilidade completa.``
 
 # Agente Conversacional de Saúde da Mulher (Bertha-Lutz-AI)

@@ -1,0 +1,17 @@
+(env) PS C:\Users\erico\Documents\Bertha-Lutz-AI> docker exec -it pg-agent psql -U postgres
+psql (18.2 (Debian 18.2-1.pgdg13+1))
+Type "help" for help.
+
+postgres=# CREATE DATABASE bertha_lutz;
+\c bertha_lutz
+CREATE DATABASE
+You are now connected to database "bertha_lutz" as user "postgres".
+bertha_lutz=# CREATE TABLE memory (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT,
+    role TEXT,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE TABLE
+bertha_lutz=#
