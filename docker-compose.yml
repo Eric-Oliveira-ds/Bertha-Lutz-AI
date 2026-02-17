@@ -1,0 +1,25 @@
+services:
+  api:
+    build: .
+    volumes:
+      - .:/app
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - chroma
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  chroma:
+    image: chromadb/chroma
+    ports:
+      - "8001:8000"

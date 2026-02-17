@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
-    "postgresql+psycopg://postgres:postgres@127.0.0.1:5433/postgres",
+    "postgresql+psycopg://postgres:postgres@localhost:5433/postgres",
     pool_pre_ping=True
 )
 
@@ -57,4 +57,10 @@ def load_memory(user_id: str):
             """),
             {"user_id": user_id}
         )
-        return result.fetchall()
+
+        rows = result.fetchall()
+
+        return [
+            {"role": row[0], "content": row[1]}
+            for row in rows
+        ]
