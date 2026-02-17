@@ -1,8 +1,15 @@
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
-embeddings = HuggingFaceEmbeddings(model_name="hkunlp/instructor-base")
-vectordb = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
+
+def get_vectordb():
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small"
+    )
+    return Chroma(
+        persist_directory="chroma_db",
+        embedding_function=embeddings
+    )
 
 
 def search_protocol(query: str):
@@ -18,5 +25,8 @@ def search_protocol(query: str):
         A string containing the concatenated content of the most relevant documents found.
 
     """
-    docs = vectordb.similarity_search(query, k=3)
-    return "\n".join([d.page_content for d in docs])
+    vectordb = get_vectordb()
+    retriever = vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 4})
+    docs = retriever.invoke(query)
+
+    return "\n\n".join(f"Fonte: {d.metadata.get('source', 'desconhecida')}\n{d.page_content}"for d in docs)
