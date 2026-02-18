@@ -1,8 +1,11 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+# Docker -     "postgresql+psycopg://postgres:postgres@postgres:5432/postgres",
+# Local -      "postgresql+psycopg://postgres:postgres@localhost:5432/postgres",
+
 engine = create_engine(
-    "postgresql+psycopg://postgres:postgres@localhost:5433/postgres",
+    "postgresql+psycopg://postgres:postgres@postgres:5432/postgres",
     pool_pre_ping=True
 )
 
