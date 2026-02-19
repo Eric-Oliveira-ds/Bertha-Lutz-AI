@@ -1,4 +1,5 @@
 import os
+from urllib import response
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -12,7 +13,8 @@ load_dotenv()
 
 os.getenv("OPENAI_API_KEY")
 
-llm = ChatOpenAI(model="gpt-4o-mini", max_tokens=300, temperature=0.2)
+llm = ChatOpenAI(model="gpt-4o-mini", max_tokens=300,
+                 temperature=0.2,  streaming=False)
 
 
 class AgentState(TypedDict):
@@ -59,7 +61,12 @@ def node_llm(state):
         )
     )
 
-    resposta = llm.invoke(messages).content
+    response = llm.invoke(messages)
+    resposta = response.content
+
+    usage = response.response_metadata.get("token_usage", {})
+    print("Token usage:", usage)
+
     state["resposta"] = resposta
     return state
 

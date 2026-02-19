@@ -11,6 +11,7 @@ services:
       - chroma
     environment:
       - PYTHONUNBUFFERED=1
+    restart: always
 
   postgres:
     image: postgres:15
@@ -18,8 +19,35 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
 
   chroma:
     image: chromadb/chroma
     ports:
       - "8001:8000"
+    volumes:
+      - chroma_data:/data
+    restart: always
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: always
+
+volumes:
+  postgres_data:
+  chroma_data:
+  grafana_data:

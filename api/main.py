@@ -4,11 +4,15 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
 from agent.graph import agent_graph
 from agent.memory import save_memory, load_memory, SessionLocal
+from prometheus_fastapi_instrumentator import Instrumentator
+from time import time
 
 app = FastAPI()
 templates = Jinja2Templates(directory="frontend/templates")
 
 agent = agent_graph()
+
+Instrumentator().instrument(app).expose(app)
 
 
 # ---------- DB INIT ----------
@@ -68,14 +72,20 @@ def chat(user_id: str = Form(...), message: str = Form(...)):
 
     history = load_memory(user_id)
 
+    start = time()
+
     result = agent.invoke({
         "input": message,
         "history": history
     })
 
+    duration = time() - start
+
     response = result["resposta"]
 
     save_memory(user_id, "user", message)
     save_memory(user_id, "assistant", response)
+
+    print(f"LLM latency: {duration:.3f}s")
 
     return {"response": response}
