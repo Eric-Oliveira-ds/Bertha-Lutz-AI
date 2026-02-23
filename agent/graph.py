@@ -1,5 +1,4 @@
 import os
-from urllib import response
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -7,6 +6,8 @@ from langchain_core.messages import AIMessage
 from typing import TypedDict
 from agent.tools import search_protocol
 from agent.guardrails import apply_guardrails
+from agent.metrics import llm_tokens_total, llm_latency_seconds
+from time import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -33,6 +34,9 @@ def node_rag(state):
 
 
 def node_llm(state):
+    """Node responsible for generating a response using the LLM."""
+    start = time()
+
     messages = [
         SystemMessage(
             content="Você é um agente especializado em saúde da mulher, baseado em diretrizes oficiais."
@@ -64,8 +68,18 @@ def node_llm(state):
     response = llm.invoke(messages)
     resposta = response.content
 
+    duration = time() - start
+
+    # ✅ MÉTRICAS
+    llm_latency_seconds.observe(duration)
+
     usage = response.response_metadata.get("token_usage", {})
-    print("Token usage:", usage)
+
+    if "prompt_tokens" in usage:
+        llm_tokens_total.labels(type="prompt").inc(usage["prompt_tokens"])
+
+    if "completion_tokens" in usage:
+        llm_tokens_total.labels(type="completion").inc(usage["completion_tokens"])
 
     state["resposta"] = resposta
     return state

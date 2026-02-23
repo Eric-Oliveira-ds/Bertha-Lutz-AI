@@ -1,5 +1,6 @@
 import os
 from groq import Groq
+from agent.metrics import guardrail_blocks_total
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,6 +35,7 @@ def apply_guardrails(resposta: str) -> str:
 
     # Se a resposta contiver 'INSEGURO' em qualquer parte, bloqueamos.
     if "INSEGURO" in veredito:
+        guardrail_blocks_total.inc()  # Incrementa a métrica de bloqueios
         return (
             "⚠️ **Aviso de Segurança Bertha Lutz:**\n"
             "Não posso recomendar medicamentos, dosagens ou fornecer diagnósticos. "
