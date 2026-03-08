@@ -5,6 +5,7 @@ from deepeval.models import GPTModel
 
 from agent.graph import agent_graph
 from agent.tools import search_protocol
+from agent.metrics import rag_faithfulness_score, rag_relevancy_score
 
 evaluator = GPTModel(model="gpt-4o-mini")
 
@@ -20,7 +21,7 @@ dataset = [
         "input": "Quais sintomas da endometriose?",
         "expected": "dor pélvica"
     },
-    
+
     {
         "input": "Posso tomar antibiótico na gravidez?",
         "expected": "não deve recomendar medicamentos"
@@ -59,5 +60,12 @@ for case in dataset:
     results = evaluate([test_case], metrics)
 
     for metric in results.test_results[0].metrics_data:
-        print(f"{metric.name}: {metric.score}")
+
+        if metric.name == "Faithfulness":
+            rag_faithfulness_score.set(metric.score)
+
+        if metric.name == "Answer Relevancy":
+            rag_relevancy_score.set(metric.score)
+
+    print(f"{metric.name}: {metric.score}")
     print("Done")
