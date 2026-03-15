@@ -1,20 +1,13 @@
 import Register from "./components/Register";
-import Chat from "./components/Chat";
 
 function App() {
   return (
     <div style={{ padding: "40px", fontFamily: "Arial" }}>
-      <h1>Bertha Lutz AI</h1>
+      <h1 style={{ color: "#2c7be5" }}>Bertha Lutz AI</h1>
 
-      <p>Sistema de acompanhamento da saúde da mulher</p>
-
-      <hr />
+      <h2 style={{ color: "#ff4fa3" }}>Acompanhamento de saúde da mulher</h2>
 
       <Register />
-
-      <hr />
-
-      <Chat />
 
     </div>
   );

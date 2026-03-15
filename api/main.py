@@ -10,6 +10,7 @@ from agent.memory import save_memory, load_memory, SessionLocal
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from time import time
+from datetime import datetime
 
 app = FastAPI()
 
@@ -33,6 +34,16 @@ class RegisterRequest(BaseModel):
     cpf: str
 
 
+def validar_cpf(cpf: str):
+    cpf_limpo = "".join(filter(str.isdigit, cpf))
+
+    if len(cpf_limpo) != 11:
+        raise HTTPException(
+            status_code=400,
+            detail="CPF deve conter 11 dígitos"
+        )
+
+
 # ---------- DB INIT ----------
 
 def create_tables():
@@ -41,7 +52,8 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 name TEXT,
-                cpf TEXT UNIQUE
+                cpf TEXT UNIQUE,
+                date_birth DATE
             );
         """))
 
@@ -69,17 +81,21 @@ def home(request: Request):
 
 
 @app.post("/register")
-def register(name: str = Form(...), cpf: str = Form(...)):
+def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form(...)):
+
+    validar_cpf(cpf)
+    date_obj = datetime.strptime(date_birth, "%d/%m/%Y").date()
+
     with SessionLocal() as session:
         try:
 
             result = session.execute(
                 text("""
-                    INSERT INTO users (name, cpf)
-                    VALUES (:name, :cpf)
+                    INSERT INTO users (name, cpf, date_birth)
+                    VALUES (:name, :cpf, :date_birth)
                     RETURNING id
                 """),
-                {"name": name, "cpf": cpf}
+                {"name": name, "cpf": cpf, "date_birth": date_obj}
             )
 
             user_id = result.fetchone()[0]
