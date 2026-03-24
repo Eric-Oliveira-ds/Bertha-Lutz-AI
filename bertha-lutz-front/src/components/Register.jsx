@@ -122,7 +122,7 @@ function Register() {
   };
 
   return (
-    <div id="center">
+    <div className="container">
       <div className="card">
         <h2>Cadastro da Paciente</h2>
         <form onSubmit={register}>
