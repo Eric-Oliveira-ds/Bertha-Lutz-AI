@@ -54,6 +54,7 @@ function Register() {
   const [name, setName] = useState("");
   const [cpf, setCpf] = useState("");
   const [dateBirth, setDateBirth] = useState("");
+  const [phone, setPhone] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -81,6 +82,7 @@ function Register() {
     formData.append("name", name);
     formData.append("cpf", cpf);
     formData.append("date_birth", dateBirth);
+    formData.append("phone", phone);
 
     try {
 
@@ -165,6 +167,15 @@ function Register() {
                 setDateBirth(formatted);
               }}
               maxLength={10}
+            />
+          </div>
+          <div className="form-group">
+            <label>Telefone</label>
+            <input
+              type="text"
+              placeholder="(00) 00000-0000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
           <button type="submit">

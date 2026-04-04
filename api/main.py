@@ -53,7 +53,8 @@ def create_tables():
                 id SERIAL PRIMARY KEY,
                 name TEXT,
                 cpf TEXT UNIQUE,
-                date_birth DATE
+                date_birth DATE,
+                phone TEXT
             );
         """))
 
@@ -81,7 +82,7 @@ def home(request: Request):
 
 
 @app.post("/register")
-def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form(...)):
+def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form(...), phone: str = Form(...)):
 
     validar_cpf(cpf)
     date_obj = datetime.strptime(date_birth, "%d/%m/%Y").date()
@@ -91,11 +92,11 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
 
             result = session.execute(
                 text("""
-                    INSERT INTO users (name, cpf, date_birth)
-                    VALUES (:name, :cpf, :date_birth)
+                    INSERT INTO users (name, cpf, date_birth, phone)
+                    VALUES (:name, :cpf, :date_birth, :phone)
                     RETURNING id
                 """),
-                {"name": name, "cpf": cpf, "date_birth": date_obj}
+                {"name": name, "cpf": cpf, "date_birth": date_obj, "phone": phone}
             )
 
             user_id = result.fetchone()[0]
