@@ -11,6 +11,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from time import time
 from datetime import datetime
+from api.send_message import send_whatsapp_message
 
 app = FastAPI()
 
@@ -85,11 +86,12 @@ def home(request: Request):
 def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form(...), phone: str = Form(...)):
 
     validar_cpf(cpf)
+    # Converte a data (ajuste o formato se necessário para o seu front-end)
     date_obj = datetime.strptime(date_birth, "%d/%m/%Y").date()
 
     with SessionLocal() as session:
         try:
-
+            # Inserção no banco de dados
             result = session.execute(
                 text("""
                     INSERT INTO users (name, cpf, date_birth, phone)
@@ -102,7 +104,24 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             user_id = result.fetchone()[0]
             session.commit()
 
-            return {"user_id": user_id}
+            # --- INTEGRAÇÃO WHATSAPP ---
+            # Mensagem estratégica de boas-vindas e triagem
+            primeira_pergunta = (
+                f"Olá {name}! Sou a Bertha, sua assistente de saúde. 🌸\n\n"
+                "Para começarmos, qual foi a última vez que você foi a uma UBS "
+                "ou hospital para realizar exames de rotina?"
+            )
+
+            sucesso_whatsapp = send_whatsapp_message(phone, primeira_pergunta)
+
+            # Opcional: Salvar essa primeira interação na memória do agente
+            if sucesso_whatsapp:
+                save_memory(str(user_id), "assistant", primeira_pergunta)
+
+            return {
+                "user_id": user_id,
+                "whatsapp_sent": sucesso_whatsapp
+            }
 
         except IntegrityError:
             session.rollback()
