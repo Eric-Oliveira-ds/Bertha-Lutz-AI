@@ -12,6 +12,9 @@ from pydantic import BaseModel
 from time import time
 from datetime import datetime
 from api.send_message import send_whatsapp_message
+from api.tts import text_to_speech
+from api.send_message import send_whatsapp_audio
+import os
 
 app = FastAPI()
 
@@ -107,16 +110,28 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             # --- INTEGRAÇÃO WHATSAPP ---
             # Mensagem estratégica de boas-vindas e triagem
             primeira_pergunta = (
-                f"Olá {name}! Sou a Bertha, sua assistente de saúde. 🌸\n\n"
+                f"Olá {name.split()[0]}! Sou a Bertha, sua assistente de saúde. 🌸\n\n"
                 "Para começarmos, qual foi a última vez que você foi a uma UBS "
                 "ou hospital para realizar exames de rotina?"
             )
+            try:
+                audio_file = text_to_speech(primeira_pergunta)
+            except Exception as e:
+                print(f"Erro ao gerar áudio: {e}")
+                audio_file = None
 
-            sucesso_whatsapp = send_whatsapp_message(phone, primeira_pergunta)
+            sucesso_whatsapp = False
 
-            # Opcional: Salvar essa primeira interação na memória do agente
+            if audio_file and os.path.exists(audio_file):
+                sucesso_whatsapp = send_whatsapp_audio(phone, audio_file)
+            else:
+                sucesso_whatsapp = send_whatsapp_message(phone, primeira_pergunta)
+
             if sucesso_whatsapp:
                 save_memory(str(user_id), "assistant", primeira_pergunta)
+
+            if audio_file and os.path.exists(audio_file):
+                os.remove(audio_file)
 
             return {
                 "user_id": user_id,
