@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 from agent.graph import agent_graph
@@ -110,9 +111,7 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             # --- INTEGRAÇÃO WHATSAPP ---
             # Mensagem estratégica de boas-vindas e triagem
             primeira_pergunta = (
-                f"Olá {name.split()[0]}! Sou a Bertha, sua assistente de saúde. 🌸\n\n"
-                "Para começarmos, qual foi a última vez que você foi a uma UBS "
-                "ou hospital para realizar exames de rotina?"
+                f"Olá {name.split()[0]}! Sou a sua assistente de saúde. Para começarmos, qual foi a última vez que você foi a uma unidade de saúde para realizar exames de rotina?"
             )
             try:
                 audio_file = text_to_speech(primeira_pergunta)
@@ -146,8 +145,43 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             )
 
 
-@app.post("/chat")
-def chat(user_id: str = Form(...), message: str = Form(...)):
+class WhatsAppMessage(BaseModel):
+    phone: str
+    message: str
+
+
+@app.post("/webhook/whatsapp")
+async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
+
+    try:
+        body = await request.json()
+    except Exception:
+        print("Webhook sem JSON válido")
+        return {"status": "invalid_json"}
+
+    try:
+        if body["data"]["key"]["fromMe"]:
+            return {"status": "ignored"}
+
+        phone = body["data"]["key"]["remoteJid"].split("@")[0]
+
+        msg_data = body["data"]["message"]
+
+        if "conversation" in msg_data:
+            message = msg_data["conversation"]
+        elif "extendedTextMessage" in msg_data:
+            message = msg_data["extendedTextMessage"]["text"]
+        else:
+            return {"status": "ignored"}
+
+        phone = normalize_phone(phone)
+
+    except Exception as e:
+        print("Erro ao parsear webhook:", body, e)
+        return {"status": "parse_error"}
+
+
+def process_message(user_id: str, phone: str, message: str):
 
     history = load_memory(user_id)
 
@@ -165,6 +199,24 @@ def chat(user_id: str = Form(...), message: str = Form(...)):
     save_memory(user_id, "user", message)
     save_memory(user_id, "assistant", response)
 
-    print(f"LLM latency: {duration:.3f}s")
+    print(f"[WEBHOOK] user={user_id} phone={phone} latency={duration:.2f}s")
 
-    return {"response": response}
+    try:
+        audio_file = text_to_speech(response)
+    except Exception as e:
+        print(f"Erro ao gerar áudio: {e}")
+        audio_file = None
+
+    if audio_file and os.path.exists(audio_file):
+        send_whatsapp_audio(phone, audio_file)
+        os.remove(audio_file)
+    else:
+        send_whatsapp_message(phone, response)
+
+def normalize_phone(number: str):
+    clean = "".join(filter(str.isdigit, number))
+
+    if not clean.startswith("55"):
+        clean = "55" + clean
+
+    return clean
