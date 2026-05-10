@@ -103,6 +103,9 @@ Bertha-Lutz-AI/
 3. Faça commits claros e testes.
 4. Abra um Pull Request com descrição detalhada.
 
+### Webhook
+http://api:8000/webhook/whatsapp
+
 ### Testes
 Execute testes com:
 ```bash

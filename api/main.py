@@ -116,7 +116,7 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             try:
                 audio_file = text_to_speech(primeira_pergunta)
             except Exception as e:
-                print(f"Erro ao gerar áudio: {e}")
+                print(f"[TTS] Erro ao gerar áudio: {e}")
                 audio_file = None
 
             sucesso_whatsapp = False
@@ -145,78 +145,142 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             )
 
 
-class WhatsAppMessage(BaseModel):
-    phone: str
-    message: str
-
-
 @app.post("/webhook/whatsapp")
-async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
+async def webhook_whatsapp(request: Request,background_tasks: BackgroundTasks):
 
     try:
         body = await request.json()
-    except Exception:
-        print("Webhook sem JSON válido")
-        return {"status": "invalid_json"}
 
-    try:
-        if body["data"]["key"]["fromMe"]:
+        print("\n\n===== WEBHOOK RECEBIDO =====")
+        print(body)
+        print("============================\n\n")
+
+        event = body.get("event", "").lower()
+
+        if event != "messages.upsert":
             return {"status": "ignored"}
 
-        phone = body["data"]["key"]["remoteJid"].split("@")[0]
+        data = body.get("data", {})
+        key = data.get("key", {})
 
-        msg_data = body["data"]["message"]
+        # ignora mensagens enviadas pelo próprio bot
+        if key.get("fromMe"):
+            return {"status": "ignored"}
+
+        # ------------------------------------------------
+        # PEGA DIRETAMENTE O remoteJidAlt
+        # Ex:
+        # 55759xxxxxxxx@s.whatsapp.net
+        # ------------------------------------------------
+        remote_jid_alt = key.get("remoteJidAlt")
+
+        if not remote_jid_alt:
+            return {"status": "remote_jid_alt_not_found"}
+
+        # extrai somente o telefone
+        phone = remote_jid_alt.split("@")[0]
+
+        if not phone:
+            return {"status": "phone_not_found"}
+
+        # ------------------------------------------------
+        # BUSCA USER PELO TELEFONE
+        # ------------------------------------------------
+        with SessionLocal() as session:
+
+            result = session.execute(
+                text("""
+                    SELECT id, phone
+                    FROM users
+                    WHERE phone LIKE :suffix
+                    LIMIT 1
+                """),
+                {"suffix": f"%{phone[-8:]}"}
+            ).fetchone()
+
+            if not result:
+                return {"status": "user_not_found"}
+
+            user_id = str(result[0])
+            phone = normalize_phone(result[1])
+
+        # ------------------------------------------------
+        # PARSE DA MENSAGEM
+        # ------------------------------------------------
+        msg_data = data.get("message", {})
+
+        message = None
 
         if "conversation" in msg_data:
             message = msg_data["conversation"]
+
         elif "extendedTextMessage" in msg_data:
             message = msg_data["extendedTextMessage"]["text"]
-        else:
+
+        if not message:
             return {"status": "ignored"}
 
-        phone = normalize_phone(phone)
+        print(f"[WEBHOOK] phone={phone}")
+        print(f"[WEBHOOK] user_id={user_id}")
+        print(f"[WEBHOOK] message={message}")
+
+        # ------------------------------------------------
+        # PROCESSAMENTO ASSÍNCRONO
+        # ------------------------------------------------
+        background_tasks.add_task(
+            process_message,
+            user_id,
+            phone,
+            message
+        )
+
+        return {"status": "processing"}
 
     except Exception as e:
-        print("Erro ao parsear webhook:", body, e)
+        print(f"[WEBHOOK ERROR] {e}")
         return {"status": "parse_error"}
 
 
 def process_message(user_id: str, phone: str, message: str):
 
-    history = load_memory(user_id)
-
-    start = time()
-
-    result = agent.invoke({
-        "input": message,
-        "history": history
-    })
-
-    duration = time() - start
-
-    response = result["resposta"]
-
-    save_memory(user_id, "user", message)
-    save_memory(user_id, "assistant", response)
-
-    print(f"[WEBHOOK] user={user_id} phone={phone} latency={duration:.2f}s")
-
     try:
-        audio_file = text_to_speech(response)
+        history = load_memory(user_id)
+
+        start = time()
+
+        result = agent.invoke({
+            "input": message,
+            "history": history
+        })
+
+        duration = time() - start
+
+        # ⚠️ fallback defensivo
+        response = result.get("resposta") or result.get("output") or "Desculpa, não consegui entender. Pode repetir?"
+
+        # salvar memória
+        save_memory(user_id, "user", message)
+        save_memory(user_id, "assistant", response)
+
+        print(f"[WEBHOOK] user={user_id} phone={phone} latency={duration:.2f}s")
+
+        # 🎤 TTS
+        try:
+            audio_file = text_to_speech(response)
+        except Exception as e:
+            print(f"[TTS] Erro ao gerar áudio: {e}")
+            audio_file = None
+
+        # 📤 envio
+        if audio_file and os.path.exists(audio_file):
+            send_whatsapp_audio(phone, audio_file)
+            os.remove(audio_file)
+        else:
+            send_whatsapp_message(phone, response)
+
     except Exception as e:
-        print(f"Erro ao gerar áudio: {e}")
-        audio_file = None
+        print(f"[PROCESS_MESSAGE] Erro geral: {e}")
 
-    if audio_file and os.path.exists(audio_file):
-        send_whatsapp_audio(phone, audio_file)
-        os.remove(audio_file)
-    else:
-        send_whatsapp_message(phone, response)
 
-def normalize_phone(number: str):
-    clean = "".join(filter(str.isdigit, number))
-
-    if not clean.startswith("55"):
-        clean = "55" + clean
-
-    return clean
+def normalize_phone(phone: str):
+    return "".join(filter(str.isdigit, phone))

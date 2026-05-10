@@ -7,6 +7,7 @@ from typing import TypedDict
 from agent.tools import search_protocol
 from agent.guardrails import apply_guardrails
 from agent.metrics import llm_tokens_total, llm_latency_seconds
+from agent.output_parser import clean_tts_text
 from time import time
 from dotenv import load_dotenv
 
@@ -42,6 +43,7 @@ def node_llm(state):
             content="Você é um agente especializado em saúde da mulher, baseado em diretrizes oficiais."
                     "Você NUNCA deve mencionar nomes de medicamentos específicos (como Paracetamol, Ibuprofeno, etc)."
                     "Se te perguntarem sobre remédios, explique que não pode prescrever e sugira que a usuária procure um médico ou enfermeira para avaliação."
+                    "REGRAS: - Nunca use Markdown. - Nunca use **negrito**, # títulos, listas markdown, emojis ou caracteres especiais decorativos. - Responda apenas em texto puro. - Use frases naturais para leitura em voz. - Nunca mencione medicamentos específicos."
         )
     ]
 
@@ -66,7 +68,7 @@ def node_llm(state):
     )
 
     response = llm.invoke(messages)
-    resposta = response.content
+    resposta = clean_tts_text(response.content)
 
     duration = time() - start
 
