@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -9,13 +10,15 @@ from sqlalchemy import text
 from agent.graph import agent_graph
 from agent.memory import save_memory, load_memory, SessionLocal
 from prometheus_fastapi_instrumentator import Instrumentator
-from pydantic import BaseModel
 from time import time
 from datetime import datetime
 from api.send_message import send_whatsapp_message
+from api.stt import transcribe_audio as speech_to_text
 from api.tts import text_to_speech
 from api.send_message import send_whatsapp_audio
-import os
+from api.validar_cpf import validar_cpf
+from api.db_create_tables import create_tables
+
 
 app = FastAPI()
 
@@ -33,49 +36,7 @@ agent = agent_graph()
 
 Instrumentator().instrument(app).expose(app)
 
-
-class RegisterRequest(BaseModel):
-    name: str
-    cpf: str
-
-
-def validar_cpf(cpf: str):
-    cpf_limpo = "".join(filter(str.isdigit, cpf))
-
-    if len(cpf_limpo) != 11:
-        raise HTTPException(
-            status_code=400,
-            detail="CPF deve conter 11 dígitos"
-        )
-
-
 # ---------- DB INIT ----------
-
-def create_tables():
-    with SessionLocal() as session:
-        session.execute(text("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                cpf TEXT UNIQUE,
-                date_birth DATE,
-                phone TEXT
-            );
-        """))
-
-        session.execute(text("""
-            CREATE TABLE IF NOT EXISTS memory (
-                id SERIAL PRIMARY KEY,
-                user_id TEXT,
-                role TEXT,
-                content TEXT,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        """))
-
-        session.commit()
-
-
 create_tables()
 
 
@@ -109,9 +70,9 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             session.commit()
 
             # --- INTEGRAÇÃO WHATSAPP ---
-            # Mensagem estratégica de boas-vindas e triagem
+            # Mensagem estratégica de boas-vindas
             primeira_pergunta = (
-                f"Olá {name.split()[0]}! Sou a sua assistente de saúde. Para começarmos, qual foi a última vez que você foi a uma unidade de saúde para realizar exames de rotina?"
+                f"Olá {name.split()[0]}! Sou a sua assistente de saúde, seja bem-vindo(a)!"
             )
             try:
                 audio_file = text_to_speech(primeira_pergunta)
@@ -207,22 +168,43 @@ async def webhook_whatsapp(request: Request,background_tasks: BackgroundTasks):
         # ------------------------------------------------
         # PARSE DA MENSAGEM
         # ------------------------------------------------
-        msg_data = data.get("message", {})
+        message_data = data.get("message", {})
+        print(message_data.keys())
+        message_text = None
 
-        message = None
+        # TEXTO NORMAL
+        if "conversation" in message_data:
+            message_text = message_data["conversation"]
 
-        if "conversation" in msg_data:
-            message = msg_data["conversation"]
+        # TEXTO EXTENDIDO
+        elif "extendedTextMessage" in message_data:
+            message_text = message_data["extendedTextMessage"]["text"]
 
-        elif "extendedTextMessage" in msg_data:
-            message = msg_data["extendedTextMessage"]["text"]
+        # ÁUDIO
+        elif "audioMessage" in message_data:
 
-        if not message:
-            return {"status": "ignored"}
+            base64_audio = message_data.get("base64")
 
+            if not base64_audio:
+                return {"status": "audio_base64_not_found"}
+
+            transcribed_text = speech_to_text(base64_audio)
+
+            print("TRANSCRIÇÃO:", transcribed_text)
+
+            if not transcribed_text:
+                return {"status": "audio_transcription_error"}
+
+            message_text = transcribed_text.strip()
+
+            print(f"[STT] Texto transcrito: {message_text}")
+
+        if not message_text:
+            return {"status": "empty_message"}
+
+        print(f"[WEBHOOK] message={message_text}")
         print(f"[WEBHOOK] phone={phone}")
         print(f"[WEBHOOK] user_id={user_id}")
-        print(f"[WEBHOOK] message={message}")
 
         # ------------------------------------------------
         # PROCESSAMENTO ASSÍNCRONO
@@ -231,7 +213,7 @@ async def webhook_whatsapp(request: Request,background_tasks: BackgroundTasks):
             process_message,
             user_id,
             phone,
-            message
+            message_text
         )
 
         return {"status": "processing"}

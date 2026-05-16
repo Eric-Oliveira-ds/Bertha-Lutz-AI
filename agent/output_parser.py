@@ -1,5 +1,6 @@
 import re
 
+
 def clean_tts_text(text: str) -> str:
     """
     Remove markdown e caracteres que prejudicam TTS.
