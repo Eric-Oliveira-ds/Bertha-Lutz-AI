@@ -1,6 +1,6 @@
 import os
 from groq import Groq
-from agent.metrics import guardrail_blocks_total
+from agent.metrics.metrics import guardrail_blocks_total
 from dotenv import load_dotenv
 
 load_dotenv()

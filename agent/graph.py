@@ -1,109 +1,98 @@
-import os
 from langgraph.graph import StateGraph
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.messages import AIMessage
-from typing import TypedDict
-from agent.tools import search_protocol
-from agent.guardrails import apply_guardrails
-from agent.metrics import llm_tokens_total, llm_latency_seconds
-from agent.output_parser import clean_tts_text
-from time import time
-from dotenv import load_dotenv
+from langgraph.graph import END
 
-load_dotenv()
+from agent.state import AgentState
 
-os.getenv("OPENAI_API_KEY")
+from agent.router import route_decision
 
-llm = ChatOpenAI(model="gpt-4o-mini", max_tokens=300,
-                 temperature=0.2,  streaming=False)
-
-
-class AgentState(TypedDict):
-    """Define the state structure for the agent."""
-    input: str
-    history: list
-    contexto: str
-    resposta: str
-
-
-def node_rag(state):
-    """Node responsible for retrieving relevant information based on the user's input."""
-    contexto = search_protocol(state["input"])
-    state["contexto"] = contexto
-    return state
-
-
-def node_llm(state):
-    """Node responsible for generating a response using the LLM."""
-    start = time()
-
-    messages = [
-        SystemMessage(
-            content="Você é um agente especializado em saúde da mulher, baseado em diretrizes oficiais."
-                    "Você NUNCA deve mencionar nomes de medicamentos específicos (como Paracetamol, Ibuprofeno, etc)."
-                    "Se te perguntarem sobre remédios, explique que não pode prescrever e sugira que a usuária procure um médico ou enfermeira para avaliação."
-                    "REGRAS: - Nunca use Markdown. - Nunca use **negrito**, # títulos, listas markdown, emojis ou caracteres especiais decorativos. - Responda apenas em texto puro. - Use frases naturais para leitura em voz. - Nunca mencione medicamentos específicos."
-        )
-    ]
-
-    # adiciona histórico
-    for msg in state["history"]:
-        if msg["role"] == "user":
-            messages.append(HumanMessage(content=msg["content"]))
-        else:
-            messages.append(AIMessage(content=msg["content"]))
-
-    # adiciona pergunta atual com contexto
-    messages.append(
-        HumanMessage(
-            content=f"""
-    Contexto oficial:
-    {state['contexto']}
-
-    Pergunta da paciente:
-    {state['input']}
-    """
-        )
-    )
-
-    response = llm.invoke(messages)
-    resposta = clean_tts_text(response.content)
-
-    duration = time() - start
-
-    # ✅ MÉTRICAS
-    llm_latency_seconds.observe(duration)
-
-    usage = response.response_metadata.get("token_usage", {})
-
-    if "prompt_tokens" in usage:
-        llm_tokens_total.labels(type="prompt").inc(usage["prompt_tokens"])
-
-    if "completion_tokens" in usage:
-        llm_tokens_total.labels(type="completion").inc(usage["completion_tokens"])
-
-    state["resposta"] = resposta
-    return state
-
-
-def node_guardrails(state):
-    """Node responsible for applying guardrails to the LLM's response."""
-    state["resposta"] = apply_guardrails(state["resposta"])
-    return state
+from agent.nodes.rag import rag_node
+from agent.nodes.supervisor import supervisor_node
+from agent.nodes.collector import collector_node
+from agent.nodes.risk import risk_node
+from agent.nodes.followup import followup_node
+from agent.nodes.human_review import human_review_node
+from agent.nodes.guardrails import guardrails_node
 
 
 def agent_graph():
-    """Function to create and compile the agent's state graph."""
+
     graph = StateGraph(AgentState)
-    graph.add_node("rag", node_rag)
-    graph.add_node("llm", node_llm)
-    graph.add_node("guardrails", node_guardrails)
+
+    graph.add_node("rag", rag_node)
+
+    graph.add_node(
+        "supervisor",
+        supervisor_node
+    )
+
+    graph.add_node(
+        "collector",
+        collector_node
+    )
+
+    graph.add_node(
+        "risk",
+        risk_node
+    )
+
+    graph.add_node(
+        "followup",
+        followup_node
+    )
+
+    graph.add_node(
+        "human_review",
+        human_review_node
+    )
+
+    graph.add_node(
+        "guardrails",
+        guardrails_node
+    )
 
     graph.set_entry_point("rag")
 
-    graph.add_edge("rag", "llm")
-    graph.add_edge("llm", "guardrails")
+    graph.add_edge(
+        "rag",
+        "supervisor"
+    )
+
+    graph.add_conditional_edges(
+        "supervisor",
+        route_decision,
+        {
+            "collector": "collector",
+            "risk": "risk",
+            "followup": "followup",
+            "human_review": "human_review",
+            "guardrails": "guardrails"
+        }
+    )
+
+    graph.add_edge(
+        "collector",
+        "guardrails"
+    )
+
+    graph.add_edge(
+        "risk",
+        "human_review"
+    )
+
+    graph.add_edge(
+        "human_review",
+        "guardrails"
+    )
+
+    graph.add_edge(
+        "followup",
+        "guardrails"
+    )
+
+    graph.add_edge(
+        "guardrails",
+        END
+    )
 
     app = graph.compile()
 

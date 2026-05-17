@@ -7,8 +7,10 @@ from fastapi import HTTPException
 from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
+from apscheduler.schedulers.background import BackgroundScheduler
+from agent.services.followup_scheduler import run_followups
 from agent.graph import agent_graph
-from agent.memory import save_memory, load_memory, SessionLocal
+from agent.memory.memory import save_memory, load_memory, SessionLocal
 from prometheus_fastapi_instrumentator import Instrumentator
 from time import time
 from datetime import datetime
@@ -17,7 +19,7 @@ from api.stt import transcribe_audio as speech_to_text
 from api.tts import text_to_speech
 from api.send_message import send_whatsapp_audio
 from api.validar_cpf import validar_cpf
-from api.db_create_tables import create_tables
+from api.normalizar_telefone import normalize_phone
 
 
 app = FastAPI()
@@ -32,15 +34,24 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory="frontend/templates")
 
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    run_followups,
+    "interval",
+    days=1
+)
+
 agent = agent_graph()
 
 Instrumentator().instrument(app).expose(app)
 
-# ---------- DB INIT ----------
-create_tables()
-
 
 # ---------- ROUTES ----------
+
+@app.on_event("startup")
+def startup_event():
+    scheduler.start()
+
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
@@ -107,7 +118,7 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
 
 
 @app.post("/webhook/whatsapp")
-async def webhook_whatsapp(request: Request,background_tasks: BackgroundTasks):
+async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
 
     try:
         body = await request.json()
@@ -232,12 +243,13 @@ def process_message(user_id: str, phone: str, message: str):
 
         result = agent.invoke({
             "input": message,
-            "history": history
+            "history": history,
+            "user_id": user_id
         })
 
         duration = time() - start
 
-        # ⚠️ fallback defensivo
+        # fallback defensivo
         response = result.get("resposta") or result.get("output") or "Desculpa, não consegui entender. Pode repetir?"
 
         # salvar memória
@@ -262,7 +274,3 @@ def process_message(user_id: str, phone: str, message: str):
 
     except Exception as e:
         print(f"[PROCESS_MESSAGE] Erro geral: {e}")
-
-
-def normalize_phone(phone: str):
-    return "".join(filter(str.isdigit, phone))
