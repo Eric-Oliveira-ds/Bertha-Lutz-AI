@@ -8,6 +8,7 @@ from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 from apscheduler.schedulers.background import BackgroundScheduler
+import traceback
 from agent.services.followup_scheduler import run_followups
 from agent.graph import agent_graph
 from agent.memory.memory import save_memory, load_memory, SessionLocal
@@ -273,4 +274,5 @@ def process_message(user_id: str, phone: str, message: str):
             send_whatsapp_message(phone, response)
 
     except Exception as e:
-        print(f"[PROCESS_MESSAGE] Erro geral: {e}")
+        print(f"\n[PROCESS_MESSAGE] Erro geral: {e}")
+        traceback.print_exc()

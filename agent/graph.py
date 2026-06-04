@@ -12,6 +12,7 @@ from agent.nodes.risk import risk_node
 from agent.nodes.followup import followup_node
 from agent.nodes.human_review import human_review_node
 from agent.nodes.guardrails import guardrails_node
+from agent.nodes.general import general_node
 
 
 def agent_graph():
@@ -50,6 +51,10 @@ def agent_graph():
         guardrails_node
     )
 
+    graph.add_node(
+        "general", 
+        general_node)
+
     graph.set_entry_point("rag")
 
     graph.add_edge(
@@ -65,6 +70,7 @@ def agent_graph():
             "risk": "risk",
             "followup": "followup",
             "human_review": "human_review",
+            "general": "general",
             "guardrails": "guardrails"
         }
     )
@@ -93,6 +99,10 @@ def agent_graph():
         "guardrails",
         END
     )
+
+    graph.add_edge(
+        "general",
+        "guardrails")
 
     app = graph.compile()
 
