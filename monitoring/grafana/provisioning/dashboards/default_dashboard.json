@@ -1,0 +1,59 @@
+{
+  "dashboard": {
+    "title": "Bertha Lutz - Monitoramento",
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Latência do LLM (segundos)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "llm_latency_seconds",
+            "legendFormat": "latência"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+      },
+      {
+        "title": "Tokens por minuto",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(llm_tokens_total{type=\"prompt\"}[1m])",
+            "legendFormat": "prompt"
+          },
+          {
+            "expr": "rate(llm_tokens_total{type=\"completion\"}[1m])",
+            "legendFormat": "completion"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+      },
+      {
+        "title": "Bloqueios por Guardrail",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "guardrail_blocks_total"
+          }
+        ],
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 }
+      },
+      {
+        "title": "Requisições HTTP por status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[1m])",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 6, "y": 8 }
+      }
+    ],
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 0
+  },
+  "overwrite": true
+}

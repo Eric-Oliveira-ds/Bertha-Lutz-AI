@@ -21,6 +21,7 @@ from api.tts import text_to_speech
 from api.send_message import send_whatsapp_audio
 from api.validar_cpf import validar_cpf
 from api.normalizar_telefone import normalize_phone
+from api.db_create_tables import create_tables
 
 
 app = FastAPI()
@@ -52,6 +53,7 @@ Instrumentator().instrument(app).expose(app)
 @app.on_event("startup")
 def startup_event():
     scheduler.start()
+    create_tables()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -266,11 +268,13 @@ def process_message(user_id: str, phone: str, message: str):
             print(f"[TTS] Erro ao gerar áudio: {e}")
             audio_file = None
 
-        # 📤 envio
-        if audio_file and os.path.exists(audio_file):
-            send_whatsapp_audio(phone, audio_file)
-            os.remove(audio_file)
-        else:
+        try:
+            # 📤 envio
+            if audio_file and os.path.exists(audio_file):
+                send_whatsapp_audio(phone, audio_file)
+                os.remove(audio_file)
+        except Exception as e:
+            print(f"[SEND_AUDIO] Erro ao enviar áudio: {e}")
             send_whatsapp_message(phone, response)
 
     except Exception as e:
