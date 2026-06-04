@@ -1,26 +1,19 @@
-from sqlalchemy import text
 from agent.memory.memory import SessionLocal
+from sqlalchemy import JSON, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 
-def save_clinical_profile(user_id, data):
+class ClinicalProfile(Base):
+    __tablename__ = 'clinical_profile'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String)
+    data = Column(JSON)
 
+
+def save_clinical_profile(user_id: str, data: dict):
+    profile = ClinicalProfile(user_id=user_id, data=data)
     with SessionLocal() as session:
-
-        session.execute(
-            text("""
-INSERT INTO clinical_profile (
-    user_id,
-    data
-)
-VALUES (
-    :user_id,
-    :data
-)
-"""),
-            {
-                "user_id": user_id,
-                "data": str(data)
-            }
-        )
-
+        session.add(profile)
         session.commit()
