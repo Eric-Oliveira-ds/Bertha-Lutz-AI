@@ -1,33 +1,46 @@
 services:
+
   api:
     build: .
+
     volumes:
       - .:/app
+
     env_file:
-      - .env  
+      - .env
+
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
     ports:
       - "8000:8000"
+
     depends_on:
       - postgres
       - chroma
       - redis
+
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379/0
+
     restart: always
 
   postgres:
     image: postgres:15
+
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: evolution
+
     ports:
       - "5433:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     restart: always
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -36,61 +49,92 @@ services:
 
   chroma:
     image: chromadb/chroma
+
     ports:
       - "8001:8000"
+
     volumes:
       - chroma_data:/data
+
     restart: always
 
   prometheus:
     image: prom/prometheus
-    volumes:
-      - ./monitoring/prometheus:/etc/prometheus
+
     ports:
       - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+
     depends_on:
       - api
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+
+    restart: always
 
   grafana:
     image: grafana/grafana
+
     ports:
       - "3000:3000"
+
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
+
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+
       - grafana_data:/var/lib/grafana
+
     depends_on:
       - prometheus
 
+    restart: always
+
   evolution:
-      container_name: evolution_api
-      image: evoapicloud/evolution-api:v2.3.6
-      restart: always
-      ports:
-        - "8080:8080"
-      volumes:
+    container_name: evolution_api
+
+    image: evoapicloud/evolution-api:v2.3.6
+
+    restart: always
+
+    ports:
+      - "8080:8080"
+
+    volumes:
       - evolution_instances:/evolution/instances
-      env_file:
-        - .env
-      depends_on:
-        postgres:
-          condition: service_healthy
-        redis:
-          condition: service_healthy
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
 
   redis:
     image: redis:alpine
+
     container_name: redis_server
+
     command: redis-server --appendonly yes
+
     ports:
       - "6379:6379"
+
     volumes:
       - redis_data:/data
+
     restart: always
+
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 5s
@@ -103,3 +147,4 @@ volumes:
   grafana_data:
   evolution_instances:
   redis_data:
+  prometheus_data:

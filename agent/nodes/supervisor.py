@@ -7,7 +7,7 @@ from agent.services.risk_engine import calculate_risk
 from agent.metrics.metrics import llm_latency_seconds, llm_tokens_total
 
 llm_router = ChatOpenAI(
-    model="gpt-4o-mini",
+    model="gpt-5.4-mini",
     temperature=0,
     max_tokens=200
 )

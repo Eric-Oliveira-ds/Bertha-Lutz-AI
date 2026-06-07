@@ -5,10 +5,11 @@ from agent.tools.output_parser import clean_tts_text
 from agent.metrics.metrics import llm_latency_seconds, llm_tokens_total
 
 llm_general = ChatOpenAI(
-    model="gpt-4o-mini",
+    model="gpt-5.4-mini",
     temperature=0.7,
     max_tokens=150
 )
+
 
 def general_node(state):
     start = time()

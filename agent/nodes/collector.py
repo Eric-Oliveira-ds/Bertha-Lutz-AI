@@ -18,7 +18,7 @@ from agent.metrics.metrics import (
 )
 
 llm_collector = ChatOpenAI(
-    model="gpt-4o-mini",
+    model="gpt-5.4-mini",
     temperature=0.2,
     max_tokens=400
 )
