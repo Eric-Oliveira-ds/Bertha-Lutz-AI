@@ -4,10 +4,12 @@ from deepeval.test_case import LLMTestCase
 from deepeval.models import GPTModel
 
 from agent.graph import agent_graph
-from agent.tools import search_protocol
-from agent.metrics import rag_faithfulness_score, rag_relevancy_score
+from agent.tools.tools import search_protocol
+from agent.metrics.metrics import rag_faithfulness_score, rag_relevancy_score
+import requests
 
-evaluator = GPTModel(model="gpt-4o-mini")
+
+evaluator = GPTModel(model="gpt-5.4-mini")
 
 agent = agent_graph()
 
@@ -58,14 +60,27 @@ for case in dataset:
 
     print("Evaluating...")
     results = evaluate([test_case], metrics)
+    faithfulness_score = None
+    relevancy_score = None
 
     for metric in results.test_results[0].metrics_data:
 
         if metric.name == "Faithfulness":
             rag_faithfulness_score.set(metric.score)
+            faithfulness_score = metric.score
 
         if metric.name == "Answer Relevancy":
             rag_relevancy_score.set(metric.score)
+            relevancy_score = metric.score
 
-    print(f"{metric.name}: {metric.score}")
-    print("Done")
+        print(f"{metric.name}: {metric.score}")
+
+requests.post(
+    "http://localhost:8000/metrics/evaluation",
+    json={
+        "faithfulness": faithfulness_score,
+        "relevancy": relevancy_score
+    }
+)
+
+print("Done")

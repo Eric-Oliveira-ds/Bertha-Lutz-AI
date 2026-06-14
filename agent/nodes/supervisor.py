@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Literal
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+from agent.providers.router import choose_provider
 from agent.services.risk_engine import calculate_risk
 from agent.metrics.metrics import llm_latency_seconds, llm_tokens_total
 
@@ -128,5 +129,9 @@ def supervisor_node(state):
 
     state["route"] = data.get("route")
     state["confidence"] = data.get("confidence")
+
+    state["provider"] = choose_provider(state)
+
+    print(f"Supervisor Output: {data}, Provider: {state['provider']}")
 
     return state

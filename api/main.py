@@ -22,6 +22,7 @@ from api.send_message import send_whatsapp_audio
 from api.validar_cpf import validar_cpf
 from api.normalizar_telefone import normalize_phone
 from api.db_create_tables import create_tables
+from agent.metrics.metrics import rag_faithfulness_score, rag_relevancy_score
 
 
 app = FastAPI()
@@ -86,7 +87,8 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
             # --- INTEGRAÇÃO WHATSAPP ---
             # Mensagem estratégica de boas-vindas
             primeira_pergunta = (
-                f"Olá {name.split()[0]}! Sou a sua assistente de saúde, seja bem-vindo(a)!"
+                f"Olá {name.split()[0]}! Sou a sua assistente de saúde virtual. "
+                f"Como posso te ajudar hoje?"
             )
             try:
                 audio_file = text_to_speech(primeira_pergunta)
@@ -280,3 +282,12 @@ def process_message(user_id: str, phone: str, message: str):
     except Exception as e:
         print(f"\n[PROCESS_MESSAGE] Erro geral: {e}")
         traceback.print_exc()
+
+
+@app.post("/metrics/evaluation")
+def update_metrics(payload: dict):
+
+    rag_faithfulness_score.set(payload["faithfulness"])
+    rag_relevancy_score.set(payload["relevancy"])
+
+    return {"status": "ok"}

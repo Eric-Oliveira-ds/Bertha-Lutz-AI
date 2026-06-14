@@ -1,7 +1,7 @@
 import json
 from time import time
 
-from langchain_openai import ChatOpenAI
+from agent.llm import get_llm
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage
@@ -15,12 +15,6 @@ from agent.services.clinical_db import (
 from agent.metrics.metrics import (
     llm_latency_seconds,
     llm_tokens_total
-)
-
-llm_collector = ChatOpenAI(
-    model="gpt-5.4-mini",
-    temperature=0.2,
-    max_tokens=400
 )
 
 
@@ -73,7 +67,8 @@ Paciente:
         )
     ]
 
-    response = llm_collector.invoke(messages)
+    llm = get_llm(state)
+    response = llm.invoke(messages)
 
     data = json.loads(response.content)
 
