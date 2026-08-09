@@ -68,6 +68,8 @@ def register(name: str = Form(...), cpf: str = Form(...), date_birth: str = Form
     validar_cpf(cpf)
     # Converte a data (ajuste o formato se necessário para o seu front-end)
     date_obj = datetime.strptime(date_birth, "%d/%m/%Y").date()
+    # Normaliza o telefone (remove máscara) para lookup e envio no WhatsApp
+    phone = normalize_phone(phone)
 
     with SessionLocal() as session:
         try:
@@ -169,7 +171,7 @@ async def webhook_whatsapp(request: Request, background_tasks: BackgroundTasks):
                 text("""
                     SELECT id, phone
                     FROM users
-                    WHERE phone LIKE :suffix
+                    WHERE regexp_replace(phone, '\\D', '', 'g') LIKE :suffix
                     LIMIT 1
                 """),
                 {"suffix": f"%{phone[-8:]}"}
