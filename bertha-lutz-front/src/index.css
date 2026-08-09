@@ -1,54 +1,93 @@
 :root {
   --primary-blue: #2c7be5;
   --primary-pink: #ff4fa3;
+  --success-green: #1b7a46;
+  --success-bg: #e8f7ee;
+  --error-red: #c62828;
+  --error-bg: #fdecea;
   --soft-blue: #eef5ff;
   --border: #e6e9ef;
   --text: #1f2937;
 }
 
-/* background */
-
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
-  background: url("C:/Users/erico/Documents/Bertha-Lutz-AI/bertha-lutz-front/src/assets/health-bg.jpg") center/cover no-repeat fixed;
+  background: url("./assets/health-bg.jpg") center/cover no-repeat fixed;
 }
 
-/* overlay para deixar imagem suave */
-
 .overlay {
-  background: rgba(255,255,255,0.88);
+  background: rgba(255, 255, 255, 0.88);
   min-height: 100vh;
 }
 
-/* navbar */
+/* header */
 
-.navbar {
-  height: 70px;
-  background: white;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 40px;
+.app {
+  padding: 40px;
+  font-family: Arial;
 }
 
-.logo {
-  font-weight: 600;
-  font-size: 20px;
+.app-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.app-header h1 {
+  margin: 0;
   color: var(--primary-blue);
 }
 
-.logo span {
+.app-header h1 span {
   color: var(--primary-pink);
 }
 
-/* centro */
+.app-header p {
+  color: var(--primary-pink);
+  margin-top: 4px;
+  font-size: 18px;
+}
+
+/* landing */
+
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+  min-height: calc(100vh - 140px);
+  padding-top: 20px;
+}
+
+.quotation {
+  margin: 0;
+  font-style: italic;
+  text-align: center;
+  max-width: 600px;
+  color: var(--text);
+}
+
+.quotation span {
+  display: block;
+  margin-top: 12px;
+  font-style: normal;
+  font-size: 14px;
+}
+
+.landing-video {
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  max-width: 100%;
+}
+
+/* center */
 
 .container {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-top: 60px;
+  padding-top: 20px;
 }
 
 /* card */
@@ -58,7 +97,7 @@ body {
   padding: 40px;
   width: 420px;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .card h2 {
@@ -85,6 +124,7 @@ body {
   border-radius: 8px;
   border: 1px solid var(--border);
   font-size: 14px;
+  font-family: inherit;
 }
 
 .form-group input:focus {
@@ -93,26 +133,20 @@ body {
   box-shadow: 0 0 0 3px var(--soft-blue);
 }
 
-/* erro */
-
-.input-error {
-  border-color: #e53935;
-}
-
-.error-message {
-  color: #e53935;
-  font-size: 12px;
-  margin-top: 4px;
+.form-group input:disabled {
+  background: #f5f5f5;
+  color: #888;
+  cursor: not-allowed;
 }
 
 /* botão */
 
-button {
+.btn {
   width: 100%;
   padding: 12px;
   border-radius: 8px;
   border: none;
-  background: linear-gradient(90deg,var(--primary-blue),var(--primary-pink));
+  background: linear-gradient(90deg, var(--primary-blue), var(--primary-pink));
   color: white;
   font-size: 15px;
   font-weight: 500;
@@ -120,16 +154,32 @@ button {
   margin-top: 10px;
 }
 
-button:hover {
+.btn:hover:not(:disabled) {
   opacity: 0.9;
 }
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-start {
+  padding: 32px 64px;
+  font-size: 24px;
+}
+
+.btn-registered {
+  background: var(--success-green);
+}
+
+/* mensagens */
 
 .success-message {
   margin-top: 12px;
   padding: 10px;
   border-radius: 6px;
-  background: #e8f7ee;
-  color: #1b7a46;
+  background: var(--success-bg);
+  color: var(--success-green);
   font-size: 14px;
   text-align: center;
 }
@@ -138,8 +188,8 @@ button:hover {
   margin-top: 12px;
   padding: 10px;
   border-radius: 6px;
-  background: #fdecea;
-  color: #c62828;
+  background: var(--error-bg);
+  color: var(--error-red);
   font-size: 14px;
   text-align: center;
 }
